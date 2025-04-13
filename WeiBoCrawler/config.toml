@@ -1,0 +1,20 @@
+[database]
+path = "../数据库.db"
+
+[cookies]
+SCF = "AhacLqNQJsBBfZ2xb6kj-1fKArLKsj1hqbEN2LO7AiIHzKeA5McPnZii89GeNthy1TRuG9kyg546FV1O90k03Iw."
+SUB = "_2A25K_02mDeRhGeVL7lcZ8SnMyD2IHXVmdc9urDV8PUNbmtAbLRTmkW9NTC2xlApjvRqTxz3W1JOM7w_eLZVvsSWq"
+SUBP = "0033WrSXqPxfM725Ws9jqgMF55529P9D9WhY6g1xxUE-zR.iFG6nWcuO5JpX5KzhUgL.FoefSK-ReKM7e022dJLoI7_KdfvBdcvEPfxE9Btt"
+ALF = "02_1747110646"
+SINAGLOBAL = ""
+_s_tentry = ""
+Apache = ""
+ULV = ""
+XSRF-TOKEN = ""
+PC_TOKEN = ""
+WBPSESS = ""
+ALC = "ALC-3SDQrB-1744518646-4-1749882327-68d7f3d4ec16ba34c43ba4ddc3ca-2"
+X-CSRF-TOKEN = "CK-Yco0-c_19ca0oJVCYxoSKbWz-N_vzCReoCH0zx_I-xXF9gRC="
+
+[cookies_info]
+update_time = "2025-04-13 12:30:46"
