@@ -8,7 +8,7 @@ cols = st.columns([3, 3, 2, 2, 2, 2, 2, 2], vertical_alignment="bottom")
 # 搜索内容输入框
 cols[0].text_input(
     "搜索内容(话题需要在前后加上#)",
-    value="姜平",
+    value="",
     key="search_for"
 )
 

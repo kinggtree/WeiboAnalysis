@@ -6,7 +6,7 @@
 conda activate weiboCrawler
 
 # 切换到目标工作目录
-Set-Location "C:\Projects\graduationProject\refCode\WeiBoCrawler"
+# Set-Location "C:\Projects\graduationProject\WeiboAnalysis"
 
 # 运行 streamlit 应用
 streamlit run web/main.py

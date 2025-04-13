@@ -32,6 +32,8 @@ if st.button("执行查询"):
         st.write("limit 值大于 1000，出于性能考虑不显示查询结果。")
         if "sql_result" in st.session_state:
             del st.session_state["sql_result"]
+        if "last_sql_query" in st.session_state:
+            del st.session_state["last_sql_query"]
     else:
         # 构造 SQL 查询语句
         sql_query = f"SELECT * FROM {table_name} "
@@ -43,13 +45,19 @@ if st.button("执行查询"):
         else:
             sql_query += ";"
         
-        st.write("执行的 SQL 语句为：", sql_query)
+        # 将SQL查询语句存入会话状态
+        st.session_state["last_sql_query"] = sql_query
+        
         try:
             df = pd.DataFrame(db.sql(sql_query))
             st.session_state["sql_result"] = df
             st.session_state["used_limit"] = limit_value  # 保存此次使用的 limit 值
         except Exception as e:
             st.error(f"查询执行失败：{e}")
+
+# 显示最近一次执行的SQL语句（新增部分）
+if "last_sql_query" in st.session_state:
+    st.write("执行的 SQL 语句为：", st.session_state["last_sql_query"])
 
 # 5. 展示查询结果
 if "sql_result" in st.session_state:
@@ -91,20 +99,16 @@ if st.session_state.get("sentiment_button"):
     if "sql_result" not in st.session_state:
         st.error("请先执行SQL查询获取数据")
     else:
-        raw_df = st.session_state.sql_result
+        # 关键修改：创建原始数据的副本，避免污染原始数据
+        raw_df = st.session_state.sql_result.copy()  # 新增 .copy()
         
         with st.spinner("正在分析情感（首次使用需加载模型，约需30秒）..."):
-            # Step 2: 聚合结果
-            result_df = analysis_sentiment(raw_df)
-            
-            st.session_state["analysis_result"] = result_df
-            # try:
-            #     # Step 2: 聚合结果
-            #     result_df = analysis_sentiment(raw_df)
-                
-            #     st.session_state["analysis_result"] = result_df
-            # except Exception as e:
-            #     st.error(f"分析失败: {str(e)}")
+            try:
+                # 将副本传入分析函数，确保原始数据不被修改
+                result_df = analysis_sentiment(raw_df)
+                st.session_state["analysis_result"] = result_df
+            except Exception as e:
+                st.error(f"分析失败: {str(e)}")
 
 if "analysis_result" in st.session_state:
     st.subheader("情感分析结果")
