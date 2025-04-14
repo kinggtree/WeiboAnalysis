@@ -50,13 +50,15 @@ class Downloader(BaseDownloader):
     def _process_items(self, items: list[dict]) -> list[BodyRecord]:
         records = []
         for item in items:
-            mid = item.get("mid", None)
-            uid = item.get("uid", None)
+            # 增加字段有效性检查
+            if not isinstance(item.get("mid"), (str, int)) or not isinstance(item.get("uid"), (str, int)):
+                continue
+            
             record = BodyRecord(
-                mid=mid,
-                uid=uid,
-                search_for=self.search_for,  # 注意这里改为 search_for 字段
-                record_from=RecordFrom.Html.value,  # 使用 .value 获取枚举值
+                mid=item["mid"],
+                uid=item["uid"],
+                search_for=self.search_for,
+                record_from=RecordFrom.Html.value,
                 json_data=item
             )
             records.append(record)

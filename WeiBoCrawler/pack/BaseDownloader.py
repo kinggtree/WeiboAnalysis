@@ -96,34 +96,46 @@ class BaseDownloader(ABC):
 
     async def _save_to_database_asyncio(self, items: list[BodyRecord | Comment1Record | Comment2Record]) -> None:
         """异步保存"""
-        docs = [item.model_dump(by_alias=True, exclude={'id'}) for item in items]
-        res_ids = await self.db.async_add_records(
-            collection_name=self.table_name,  # 直接传递集合名称
-            records=docs
-        )
-        self.res_ids.extend(res_ids)
-
-
-    # async def _save_to_database_asyncio(self, items: list[BodyRecord | Comment1Record | Comment2Record]) -> None:
-    #     """保存数据到数据库(异步)
-
-    #     Args:
-    #         items (list[dict]): 数据列表
-    #     """
-    #     res_ids = await self.db.async_add_records(items)
-    #     self.res_ids.extend(res_ids)
+        if not items:
+            logger.warning("保存时发现空items列表")
+            return
+        
+        # 转换并过滤无效文档
+        docs = []
+        for item in items:
+            doc = item.model_dump(by_alias=True, exclude={'id'})
+            if doc and isinstance(doc, dict):
+                docs.append(doc)
+        
+        if not docs:
+            logger.warning("转换后的文档列表为空")
+            return
+        
+        try:
+            res_ids = await self.db.async_add_records(
+                collection_name=self.table_name,
+                records=docs
+            )
+            self.res_ids.extend(res_ids)
+        except Exception as e:
+            logger.error(f"数据库插入失败: {str(e)}")
 
     @log_function_params(logger=logger)
     def _check_response(self, response: httpx.Response) -> bool:
-        """检查响应是否正常
-
-        Args:
-            response (httpx.Response): 接受到的响应
-
-        Returns:
-            bool: 有问题返回 False, 否则返回 True
-        """
-        return response.status_code == httpx.codes.OK
+        """响应检查逻辑"""
+        if response.status_code != 200:
+            logger.warning(f"响应状态码异常: {response.status_code}")
+            return False
+        
+        try:
+            data = response.json()
+            if data.get("ok") != 1:  # 假设接口返回 ok=1 表示成功
+                logger.warning(f"接口返回错误: {data.get('msg')}")
+                return False
+        except:
+            pass
+        
+        return True
 
 
     async def _download_asyncio(self):
