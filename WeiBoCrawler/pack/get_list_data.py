@@ -46,15 +46,8 @@ class Downloader(BaseDownloader):
         """
         return list(range(1, 51))
 
+    # 适应mongodb的修改部分
     def _process_items(self, items: list[dict]) -> list[BodyRecord]:
-        """_summary_
-
-        Args:
-            items (list[dict]): _description_
-
-        Returns:
-            list[BodyRecord]: _description_
-        """
         records = []
         for item in items:
             mid = item.get("mid", None)
@@ -62,12 +55,13 @@ class Downloader(BaseDownloader):
             record = BodyRecord(
                 mid=mid,
                 uid=uid,
-                search_for=self.table_name,
-                record_from=RecordFrom.Html,
-                json_data = item
+                search_for=self.search_for,  # 注意这里改为 search_for 字段
+                record_from=RecordFrom.Html.value,  # 使用 .value 获取枚举值
+                json_data=item
             )
             records.append(record)
         return records
+
 
     def _process_response(self, response: httpx.Response, *, param: Any) -> None:
         """处理请求并存储数据

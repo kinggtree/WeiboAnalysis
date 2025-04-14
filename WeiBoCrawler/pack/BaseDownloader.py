@@ -84,23 +84,34 @@ class BaseDownloader(ABC):
         """
         ...
 
+    # 适应mongodb的修改部分
     def _save_to_database(self, items: list[BodyRecord | Comment1Record | Comment2Record]) -> None:
-        """保存数据到数据库
-
-        Args:
-            items (list[dict]): 数据列表
-        """
-        res_ids = self.db.sync_add_records(items)
+        """同步保存"""
+        docs = [item.model_dump(by_alias=True, exclude={'id'}) for item in items]
+        res_ids = self.db.sync_add_records(
+            collection_name=self.table_name,  # 直接传递集合名称
+            records=docs
+        )
         self.res_ids.extend(res_ids)
 
     async def _save_to_database_asyncio(self, items: list[BodyRecord | Comment1Record | Comment2Record]) -> None:
-        """保存数据到数据库(异步)
-
-        Args:
-            items (list[dict]): 数据列表
-        """
-        res_ids = await self.db.async_add_records(items)
+        """异步保存"""
+        docs = [item.model_dump(by_alias=True, exclude={'id'}) for item in items]
+        res_ids = await self.db.async_add_records(
+            collection_name=self.table_name,  # 直接传递集合名称
+            records=docs
+        )
         self.res_ids.extend(res_ids)
+
+
+    # async def _save_to_database_asyncio(self, items: list[BodyRecord | Comment1Record | Comment2Record]) -> None:
+    #     """保存数据到数据库(异步)
+
+    #     Args:
+    #         items (list[dict]): 数据列表
+    #     """
+    #     res_ids = await self.db.async_add_records(items)
+    #     self.res_ids.extend(res_ids)
 
     @log_function_params(logger=logger)
     def _check_response(self, response: httpx.Response) -> bool:

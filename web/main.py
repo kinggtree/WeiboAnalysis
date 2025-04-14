@@ -22,8 +22,8 @@ pg = st.navigation({
         st.Page("./web_pages/搜索/一级评论搜索.py", title="一级评论搜索", icon=":material/add_circle:"),
         st.Page("./web_pages/搜索/二级评论搜索.py", title="二级评论搜索", icon=":material/add_circle:"),
     ],
-    "查询": [
-        st.Page("./web_pages/查询/查询.py", title="SQL语句查询", icon=":material/add_circle:")
+    "查询和分析": [
+        st.Page("./web_pages/查询/查询.py", title="SQL查询和情感分析", icon=":material/add_circle:")
     ],
 })
 
