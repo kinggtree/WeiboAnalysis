@@ -22,14 +22,15 @@ class _Net(nn.Module):  # 内部类加下划线
     def forward(self, x):
         return self.sigmoid(self.fc(x))
 
-def _parse_data(df):  # 内部函数加下划线
+def _parse_data(df):
     def parse_json(x):
         try:
             return json.loads(x.replace("'", '"'))
         except:
             return {}
     
-    df['json_data'] = df['json_data'].apply(parse_json)
+    # 保留原始列，新增parsed_json列
+    # df['parsed_json'] = df['json_data'].apply(parse_json)
     df['content'] = df['json_data'].apply(lambda x: x.get('content_all', ''))
     return df
 

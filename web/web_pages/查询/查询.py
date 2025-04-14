@@ -5,8 +5,6 @@ from SentimentAnalysis import analysis_sentiment
 
 # ================== MongoDB查询部分 ==================
 
-
-
 # 获取所有集合名称（同步方式）
 try:
     collection_names = db.sync_get_collection_names()
@@ -62,10 +60,15 @@ if "mongo_result" in st.session_state:
         if "json_data" in df.columns:
             # 直接展开嵌套字段（MongoDB 不需要手动解析）
             json_df = pd.json_normalize(df['json_data'])
+            # 检查是否有 uid 列，如果有则重命名为 json_uid
+            if 'uid' in json_df.columns:
+                json_df = json_df.rename(columns={'uid': 'json_uid'})
+            
+            # 合并 DataFrame
             df = pd.concat([df.drop('json_data', axis=1), json_df], axis=1)
         
         # 显示内容字段
-        display_columns = [col for col in ['search_for', 'uid', 'content_all'] if col in df.columns]
+        display_columns = [col for col in ['search_for', 'personal_name', 'content_all'] if col in df.columns]
         if display_columns:
             df = df[display_columns]
             df.rename(columns={'content_all': 'content'}, inplace=True)
