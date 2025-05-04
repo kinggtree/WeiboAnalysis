@@ -8,16 +8,28 @@ import axios from 'axios';
 const SentimentAnalysis = () => {
   const [collections, setCollections] = useState([]);
   const [selectedCollection, setSelectedCollection] = useState('');
-  const [limit, setLimit] = useState(0);
+  const [limit, setLimit] = useState(1000);
   const [queryResult, setQueryResult] = useState(null);
   const [analysisResult, setAnalysisResult] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [collectionsLoading, setCollectionsLoading] = useState(true); // 新增集合加载状态
+  const [currentDatasetInfo, setCurrentDatasetInfo] = useState(null);
+
 
   // 获取集合列表
+  // 获取集合列表（添加加载状态）
   useEffect(() => {
+    setCollectionsLoading(true);
     axios.get('/api/analysis/collections')
-      .then(res => setCollections(res.data))
-      .catch(err => console.error(err));
+      .then(res => {
+        setCollections(res.data);
+        setCollectionsLoading(false);
+      })
+      .catch(err => {
+        console.error(err);
+        setCollections([]);
+        setCollectionsLoading(false);
+      });
   }, []);
 
   // 执行查询
@@ -28,6 +40,8 @@ const SentimentAnalysis = () => {
         collection: selectedCollection,
         limit: limit || 0
       });
+
+      
       
       const rawData = res.data;
       let processedData = rawData;
@@ -97,6 +111,14 @@ const SentimentAnalysis = () => {
             value={selectedCollection}
             onChange={setSelectedCollection}
             placeholder="选择集合"
+            loading={collectionsLoading} // 添加加载状态
+            notFoundContent={ // 自定义无数据提示
+              collectionsLoading ? (
+                <span style={{ padding: 8 }}>加载中...</span>
+              ) : (
+                <span style={{ padding: 8 }}>无可用集合</span>
+              )
+            }
           />
 
           <InputNumber
@@ -104,12 +126,14 @@ const SentimentAnalysis = () => {
             value={limit}
             onChange={setLimit}
             placeholder="Limit值"
+            disabled={collectionsLoading} // 加载时禁用
           />
 
           <Button 
             type="primary" 
             onClick={handleQuery}
             loading={loading}
+            disabled={collectionsLoading} // 加载时禁用
           >
             执行查询
           </Button>
