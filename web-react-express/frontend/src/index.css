@@ -1,0 +1,23 @@
+/* 基础重置 */
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 
+    'Helvetica Neue', Arial, sans-serif;
+}
+
+/* 统一表格样式 */
+.ant-table {
+  border-radius: 8px !important;
+  overflow: hidden !important;
+}
+
+/* 侧边栏菜单项激活样式 */
+.ant-menu-item-selected {
+  background-color: #e6f7ff !important;
+}
+
+
+code {
+  font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
+    monospace;
+}

@@ -1,0 +1,7 @@
+# 开发模式（自动加载.env）
+cd backend
+npm run dev
+
+# 生产模式（需提前设置系统环境变量）
+set PYTHON_EXECUTABLE=C:\Users\YourName\anaconda3\envs\weiboCrawler\python.exe
+npm start
