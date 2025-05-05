@@ -5,6 +5,11 @@ import json
 import re
 from pypinyin import slug, Style  # 需要安装 pypinyin 库
 import io
+from datetime import date
+import traceback
+import pandas as pd
+
+
 
 # 强制标准流编码
 sys.stdin = io.TextIOWrapper(sys.stdin.buffer, encoding='utf-8')
@@ -51,38 +56,67 @@ def generate_safe_collection_name(search_text: str) -> str:
 def handle_errors(func):
     def wrapper(*args, **kwargs):
         try:
+            # 尝试执行被装饰的函数 (例如 main_process)
             return func(*args, **kwargs)
         except Exception as e:
-            print(f"ERROR: {str(e)}", file=sys.stderr)
-            sys.exit(1)
+            # --- 捕获到异常，打印详细信息 ---
+            err_type = type(e).__name__  # 获取异常类型名称
+            err_msg = str(e)             # 获取异常消息
+            # 获取完整的 traceback 字符串
+            err_traceback = traceback.format_exc()
+
+            # 打印到 stderr (Node.js 会捕获这里的内容)
+            print(f"--- Python Script Error ---", file=sys.stderr)
+            print(f"ERROR Type: {err_type}", file=sys.stderr)
+            print(f"ERROR Message: {err_msg}", file=sys.stderr)
+            print(f"Traceback:\n{err_traceback}", file=sys.stderr) # 打印完整 traceback
+            print(f"--- End Python Script Error ---", file=sys.stderr)
+            # --- 结束详细信息打印 ---
+            sys.exit(1) # 以非零状态码退出，表示出错
     return wrapper
 
 @handle_errors
 def main_process():
-    # 兼容原config_path路径
-    import WeiBoCrawler.util as crawler_util
-    sys.modules['WeiBoCrawler.util.config_path'] = crawler_util.config_path
-    sys.modules['WeiBoCrawler.util.cookies_config'] = crawler_util.cookies_config
+    # --- 从 stdin 读取 JSON 参数 ---
+    try:
+        input_data = sys.stdin.read() # 读取所有来自 Node.js 的输入
+        if not input_data:
+             print("ERROR: Python received empty data from stdin.", file=sys.stderr)
+             sys.exit(1)
+        params = json.loads(input_data) # 解析 JSON 字符串为 Python 字典
+    except json.JSONDecodeError as e:
+        print(f"ERROR: Python failed to decode JSON from stdin: {e}", file=sys.stderr)
+        # 打印接收到的原始数据，帮助调试
+        print(f"Received raw data: {input_data}", file=sys.stderr)
+        sys.exit(1)
+    except Exception as e:
+        print(f"ERROR: Python error reading/parsing params from stdin: {e}", file=sys.stderr)
+        sys.exit(1)
+    # --- 结束: 从 stdin 读取 JSON 参数 ---
+
+    # --- 使用从 stdin 获取的 params 字典中的值 ---
+    # 使用 .get() 获取值更安全，可以提供默认值，避免 KeyError
+    search_for = params.get("search_for", "")
+    kind = params.get("kind", "综合")
+    advanced_kind = params.get("advanced_kind", "综合")
+    start = params.get("start", "2020-01-01")
+    # 确保结束日期有合理的默认值或处理逻辑
+    end = params.get("end", date.today().isoformat()) # 使用 date.today() 获取今天日期，isoformat() 转为 YYYY-MM-DD 格式
+
+
+    # (可选，但推荐) 添加调试打印，确认参数已正确接收
+    print(f"DEBUG Python: Received params - search_for='{search_for}', kind='{kind}', start='{start}', end='{end}'", file=sys.stderr)
 
     
-    # 接收命令行参数
-    params = {
-        "search_for": sys.argv[1],
-        "kind": sys.argv[2],
-        "advanced_kind": sys.argv[3],
-        "start": sys.argv[4],
-        "end": sys.argv[5]
-    }
-    
-    # 原业务逻辑处理
-    collection_name = generate_safe_collection_name(params["search_for"])
+    # 业务逻辑处理
+    collection_name = generate_safe_collection_name(search_for)
     res_ids = get_list_data(
-        search_for=params["search_for"],
+        search_for=search_for, # 确保这里用的是从 params 获取的变量
         table_name=collection_name,
-        kind=params["kind"],
-        advanced_kind=params["advanced_kind"],
-        time_start=params["start"],
-        time_end=params["end"]
+        kind=kind,
+        advanced_kind=advanced_kind,
+        time_start=start,
+        time_end=end
     )
     
     records = db.sync_get_records_by_ids(
@@ -91,8 +125,26 @@ def main_process():
     )
     documents = [record["json_data"] for record in records]
     processed_data = process_list_documents(documents)
+
+    df_results = process_list_documents(documents)
+
+    # --- 新增：将 DataFrame 转换为 JSON 友好的格式 ---
+    # 检查 df_results 是否真的是 DataFrame (可选但更健壮)
+    if isinstance(df_results, pd.DataFrame):
+        # 使用 .to_dict(orient='records') 转换为列表的字典
+        # [{column1: valueA1, column2: valueB1}, {column1: valueA2, column2: valueB2}, ...]
+        serializable_data = df_results.to_dict(orient='records')
+        # 注意：如果 DataFrame 中包含 NaT (Not a Time) 或 NaN (Not a Number)，
+        # to_dict 可能会将其转换为 None，这在 JSON 中是合法的 (null)。
+        # 如果包含 Python 的 datetime 对象，它们通常会被转换为 ISO 格式的字符串或时间戳，
+        # 这取决于 Pandas 版本和你的数据，但通常也是 JSON 友好的。
+    else:
+        # 如果 process_list_documents 返回的不是 DataFrame，
+        # 假设它已经是 JSON 友好的格式了
+        serializable_data = df_results
     
-    print(json.dumps(processed_data))
+    # print(json.dumps(processed_data, ensure_ascii=False)) # ensure_ascii=False 保证中文正确输出
+    print(json.dumps(serializable_data, ensure_ascii=False)) # 打印转换后的列表/字典
 
 
 if __name__ == '__main__':
