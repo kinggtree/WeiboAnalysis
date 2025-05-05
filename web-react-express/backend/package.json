@@ -1,0 +1,26 @@
+{
+  "name": "backend",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "start": "cross-env NODE_OPTIONS='--experimental-modules' node server.js",
+    "dev": "cross-env NODE_ENCODING=UTF-8 nodemon --exec babel-node server.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "dependencies": {
+    "cors": "^2.8.5",
+    "cross-env": "^7.0.3",
+    "date-fns": "^4.1.0",
+    "dotenv": "^16.5.0",
+    "encoding": "^0.1.13",
+    "express": "^5.1.0",
+    "iconv-lite": "^0.6.3",
+    "json2csv": "^6.0.0-alpha.2",
+    "python-shell": "^5.0.0",
+    "toml": "^3.0.0",
+    "uuid": "^11.1.0"
+  }
+}

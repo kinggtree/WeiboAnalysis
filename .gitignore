@@ -1,9 +1,7 @@
 *.pyc
-*.json
 
 
 demo.*
-test.*
 test_*
 
 # uv.lock
@@ -107,7 +105,7 @@ profile_default/
 ipython_config.py
 
 # pyenv
-.python-version
+# .python-version
 
 # celery beat schedule file
 celerybeat-schedule
@@ -116,7 +114,7 @@ celerybeat-schedule
 *.sage.py
 
 # Environments
-.env
+# .env
 .venv
 env/
 venv/
