@@ -4,7 +4,7 @@ import sys
 import json
 import pandas as pd
 from util import db
-from SentimentAnalysis import analysis_sentiment # 假设这个模块能正常导入
+from SentimentAnalysis import analysis_sentiment
 import numpy as np
 import datetime
 from bson import ObjectId
@@ -12,12 +12,12 @@ import io
 import os # 引入 os 模块
 import traceback # 引入 traceback 用于更详细的错误输出
 
-# 强制标准流编码 (保持不变)
+# 强制标准流编码
 sys.stdin = io.TextIOWrapper(sys.stdin.buffer, encoding='utf-8')
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
 sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8', errors='replace')
 
-# --- get_collections 函数保持不变 ---
+# --- get_collections 函数 ---
 def get_collections():
     try:
         if not hasattr(db, 'sync_db') or db.sync_db is None:
@@ -91,7 +91,7 @@ def execute_query(params):
 
         # analysisBridge.py (在 execute_query 函数内部)
 
-        # --- 修正后的类型转换函数 (调整检查顺序) ---
+        # --- 类型转换函数 ---
         def convert_types_elementwise(value):
             # 1. 优先处理可能引发 pd.isna() 问题的特定类型
             if isinstance(value, ObjectId):
@@ -126,11 +126,11 @@ def execute_query(params):
                  # 再次检查 NaN/Inf
                 return None if np.isnan(value) or np.isinf(value) else float(value)
 
-            # 4. 其他标量类型（如字符串）保持不变
+            # 4. 其他标量类型（如字符串）
             return value
 
         print("DEBUG: Applying type conversion using applymap...", file=sys.stderr)
-        # --- 使用 applymap (保持不变) ---
+        # --- 使用 applymap () ---
         df = df.applymap(convert_types_elementwise)
         print("DEBUG: Type conversion applied.", file=sys.stderr)
 
@@ -155,7 +155,7 @@ def execute_query(params):
         print(traceback.format_exc(), file=sys.stderr)
         sys.exit(1) # 确保异常时退出并返回错误码
 
-# --- analyze_sentiment_from_csv 函数保持不变 (但可以加上traceback打印) ---
+# --- analyze_sentiment_from_csv 函数 ---
 def analyze_sentiment_from_csv(params):
     try:
         csv_filepath = params.get('csv_filepath')
@@ -194,7 +194,7 @@ def analyze_sentiment_from_csv(params):
         print(traceback.format_exc(), file=sys.stderr) # 打印完整 traceback
         sys.exit(1)
 
-# --- __main__ 部分保持不变 (但可以加上traceback打印) ---
+# --- __main__ 部分 ---
 if __name__ == "__main__":
     if len(sys.argv) < 2:
         print("ERROR: Missing action argument.", file=sys.stderr)

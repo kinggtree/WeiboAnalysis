@@ -84,7 +84,6 @@ def generate_qr():
             "message": f"二维码生成失败: {str(e)}"
         }
 
-# 其余保持之前提供的check_login和update_cookies函数不变...
 
 def check_login(params):
     """检查登录状态"""

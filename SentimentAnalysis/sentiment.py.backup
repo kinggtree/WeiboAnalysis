@@ -11,14 +11,14 @@ import traceback # Import traceback for error handling
 
 warnings.filterwarnings('ignore')
 
-# --- Model Path Configuration ---
+# --- Model Path Configuration (Keep as is) ---
 _MODEL_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "model")
 _BERT_MODEL_PATH = os.path.join(_MODEL_DIR, "chinese_wwm_pytorch")
 _DNN_MODEL_PATH = os.path.join(_MODEL_DIR, "bert_dnn_10_weight_only.model")
 _DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 print(f"DEBUG [sentiment.py]: Using device: {_DEVICE}", file=sys.stderr) # Add device info log
 
-# --- _Net Class ---
+# --- _Net Class (Keep as is) ---
 class _Net(nn.Module):
     def __init__(self, input_size):
         super().__init__()
@@ -69,7 +69,7 @@ def _parse_data(df_input: pd.DataFrame) -> pd.DataFrame:
     print(f"DEBUG [_parse_data]: DataFrame columns after parsing: {df.columns.tolist()}", file=sys.stderr)
     return df
 
-# --- _SentimentAnalyzer Class ---
+# --- _SentimentAnalyzer Class (Keep as is, but add debug logs) ---
 class _SentimentAnalyzer:
     _instance = None # Singleton pattern to load models only once per process
 
@@ -156,11 +156,10 @@ class _SentimentAnalyzer:
         return predictions
 
 # --- MODIFIED analysis_sentiment Function (Main public interface) ---
-def analysis_sentiment(input_data: pd.DataFrame, output_csv_path: str = None): # Add output_csv_path argument
+def analysis_sentiment(input_data: pd.DataFrame):
     """
     Performs sentiment analysis on the input DataFrame.
     Expects 'content_all' or 'content' column for text and 'search_for' for grouping.
-    Optionally saves individual sentence results to a CSV file.
     """
     if not isinstance(input_data, pd.DataFrame):
         print("ERROR [analysis_sentiment]: Input data is not a Pandas DataFrame.", file=sys.stderr)
@@ -183,68 +182,56 @@ def analysis_sentiment(input_data: pd.DataFrame, output_csv_path: str = None): #
         texts = df['content'].tolist()
 
         # Predict sentiment
+        # Handle case where all texts might be empty after parsing
         if not texts or all(not t for t in texts):
              print("WARN [analysis_sentiment]: No valid text content found after parsing. Cannot perform prediction.", file=sys.stderr)
+             # Decide how to handle this: return empty result or result with zero counts/default scores
              if 'search_for' in df.columns:
+                 # Create a result DataFrame with 0 counts based on unique search_for values
                  unique_keywords = df['search_for'].unique()
                  results = pd.DataFrame({
                      'search_for': unique_keywords,
                      'count': 0,
-                     'mean': np.nan,
-                     'positive_ratio': np.nan
+                     'mean': np.nan, # Or 0.5?
+                     'positive_ratio': np.nan # Or 0?
                  })
                  return results
              else:
+                 # If no search_for either, return completely empty structure
                  return pd.DataFrame(columns=['search_for', 'count', 'mean', 'positive_ratio'])
 
-        df['sentiment_score'] = analyzer.predict(texts) # Rename to sentiment_score for clarity
-        print(f"DEBUG [analysis_sentiment]: Added 'sentiment_score' column. Shape: {df.shape}", file=sys.stderr)
+        df['sentiment'] = analyzer.predict(texts)
+        print(f"DEBUG [analysis_sentiment]: Added 'sentiment' column. Shape: {df.shape}", file=sys.stderr)
 
-        # --- BEGIN: SAVE INDIVIDUAL RESULTS TO CSV ---
-        if output_csv_path:
-            try:
-                # Create a DataFrame with the required columns: "分析的语句", "分析结果（情感倾向，数字表示）"
-                # 'content' column has the original sentences
-                # 'sentiment_score' column has the numerical sentiment score
-                results_to_save = df[['content', 'sentiment_score']].copy()
-                results_to_save.rename(columns={
-                    'content': '分析的语句',
-                    'sentiment_score': '分析结果（情感倾向，数字表示）'
-                }, inplace=True)
-
-                # Save to CSV
-                results_to_save.to_csv(output_csv_path, index=False, encoding='utf-8-sig') # Use utf-8-sig for Excel compatibility
-                print(f"INFO [analysis_sentiment]: Individual sentiment results saved to {output_csv_path}", file=sys.stderr)
-            except Exception as e_csv:
-                print(f"ERROR [analysis_sentiment]: Failed to save individual results to CSV - {str(e_csv)}", file=sys.stderr)
-                print(traceback.format_exc(), file=sys.stderr)
-        # --- END: SAVE INDIVIDUAL RESULTS TO CSV ---
-
-        # Aggregate results (original logic)
+        # Aggregate results
         if 'search_for' in df.columns:
             print("DEBUG [analysis_sentiment]: Grouping results by 'search_for'...", file=sys.stderr)
             results = df.groupby('search_for').agg(
-                count=('sentiment_score', 'size'),
-                mean=('sentiment_score', 'mean'),
-                positive_ratio=('sentiment_score', lambda x: (x > 0.5).mean() if not x.empty else np.nan)
+                count=('sentiment', 'size'), # Use size for count, includes all rows
+                mean=('sentiment', 'mean'),
+                # Handle potential division by zero if count is 0 (though unlikely if we got here)
+                positive_ratio=('sentiment', lambda x: (x > 0.5).mean() if not x.empty else np.nan)
             ).reset_index()
             print(f"DEBUG [analysis_sentiment]: Aggregation complete. Result shape: {results.shape}", file=sys.stderr)
+            # Sort results
             results = results.sort_values(by='count', ascending=False)
         else:
+            # If no 'search_for', aggregate everything into one row
             print("WARN [analysis_sentiment]: 'search_for' column missing. Aggregating all results into one row.", file=sys.stderr)
             total_count = len(df)
             if total_count > 0:
-                 mean_sentiment = df['sentiment_score'].mean()
-                 positive_ratio = (df['sentiment_score'] > 0.5).mean()
+                 mean_sentiment = df['sentiment'].mean()
+                 positive_ratio = (df['sentiment'] > 0.5).mean()
                  results = pd.DataFrame([{
-                     'search_for': 'Overall',
+                     'search_for': 'Overall', # Assign a default keyword
                      'count': total_count,
                      'mean': mean_sentiment,
                      'positive_ratio': positive_ratio
                  }])
-            else:
+            else: # Should not happen if we passed the earlier check, but for safety
                  results = pd.DataFrame(columns=['search_for', 'count', 'mean', 'positive_ratio'])
 
+        # Final check for NaN in numeric columns and replace with None for JSON compatibility
         results['mean'] = results['mean'].replace({np.nan: None})
         results['positive_ratio'] = results['positive_ratio'].replace({np.nan: None})
 
@@ -253,7 +240,9 @@ def analysis_sentiment(input_data: pd.DataFrame, output_csv_path: str = None): #
 
     except Exception as e:
         print(f"ERROR [analysis_sentiment]: An error occurred during sentiment analysis - {str(e)}", file=sys.stderr)
+        import traceback # Import traceback here if not globally imported
         print(traceback.format_exc(), file=sys.stderr)
+        # Return an empty DataFrame or re-raise the exception depending on desired behavior
         return pd.DataFrame(columns=['search_for', 'count', 'mean', 'positive_ratio'])
 
 # Example Usage (for testing purposes, won't run when called from analysisBridge.py)

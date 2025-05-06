@@ -21,8 +21,6 @@ from WeiBoCrawler.database import BodyRecord
 
 
 # 自动生成安全集合名称
-# 修改后（MongoDB 集合名风格）
-# 列表搜索.py（更新集合名称生成和调用）
 def generate_safe_collection_name(search_text: str) -> str:
     """生成符合 MongoDB 规范的集合名称（支持中文转拼音）"""
     
@@ -104,7 +102,7 @@ def main_process():
     end = params.get("end", date.today().isoformat()) # 使用 date.today() 获取今天日期，isoformat() 转为 YYYY-MM-DD 格式
 
 
-    # (可选，但推荐) 添加调试打印，确认参数已正确接收
+    # 添加调试打印，确认参数已正确接收
     print(f"DEBUG Python: Received params - search_for='{search_for}', kind='{kind}', start='{start}', end='{end}'", file=sys.stderr)
 
     
@@ -128,8 +126,8 @@ def main_process():
 
     df_results = process_list_documents(documents)
 
-    # --- 新增：将 DataFrame 转换为 JSON 友好的格式 ---
-    # 检查 df_results 是否真的是 DataFrame (可选但更健壮)
+    # --- 将 DataFrame 转换为 JSON 友好的格式 ---
+    # 检查 df_results 是否真的是 DataFrame
     if isinstance(df_results, pd.DataFrame):
         # 使用 .to_dict(orient='records') 转换为列表的字典
         # [{column1: valueA1, column2: valueB1}, {column1: valueA2, column2: valueB2}, ...]
