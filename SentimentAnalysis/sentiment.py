@@ -8,6 +8,8 @@ import os
 import sys # Import sys for printing debug/warning messages
 import numpy as np # Import numpy for aggregation if needed
 import traceback # Import traceback for error handling
+from tqdm.auto import tqdm # tqdm.auto 会自动选择适合环境的进度条样式
+
 
 warnings.filterwarnings('ignore')
 
@@ -74,15 +76,14 @@ class _SentimentAnalyzer:
     _instance = None # Singleton pattern to load models only once per process
 
     def __new__(cls, *args, **kwargs):
+        # ... (您的 __new__ 方法代码保持不变) ...
         if not cls._instance:
             print("DEBUG [_SentimentAnalyzer]: Initializing models...", file=sys.stderr)
             cls._instance = super(_SentimentAnalyzer, cls).__new__(cls)
-            # Initialize models here within __new__ or in a separate __init__ called only once
             try:
                 cls._instance.tokenizer = BertTokenizer.from_pretrained(_BERT_MODEL_PATH)
                 cls._instance.bert = BertModel.from_pretrained(_BERT_MODEL_PATH).to(_DEVICE)
-
-                cls._instance.model = _Net(input_size=768) # Bert base hidden size
+                cls._instance.model = _Net(input_size=768)
                 cls._instance.model.load_state_dict(
                     torch.load(_DNN_MODEL_PATH, map_location=_DEVICE)
                 )
@@ -91,72 +92,76 @@ class _SentimentAnalyzer:
                 print("DEBUG [_SentimentAnalyzer]: Models loaded successfully.", file=sys.stderr)
             except Exception as e:
                 print(f"ERROR [_SentimentAnalyzer]: Failed to load models - {str(e)}", file=sys.stderr)
-                print(traceback.format_exc(), file=sys.stderr) # Add traceback
-                # Handle error appropriately, maybe raise it or set instance to None
+                print(traceback.format_exc(), file=sys.stderr)
                 cls._instance = None
                 raise RuntimeError(f"Failed to initialize SentimentAnalyzer models: {e}") from e
         return cls._instance
-
-    # Removed __init__ as initialization is handled in __new__ for singleton
 
     def predict(self, texts, batch_size=32):
         if not texts:
             print("DEBUG [predict]: Received empty list of texts. Returning empty list.", file=sys.stderr)
             return []
         if all(not t for t in texts): # Check if all texts are empty strings
-             print("DEBUG [predict]: All texts are empty. Returning default predictions.", file=sys.stderr)
-             # Return a list of default scores (e.g., 0.5 for neutral) matching the input length
-             return [0.5] * len(texts)
+            print("DEBUG [predict]: All texts are empty. Returning default predictions.", file=sys.stderr)
+            return [0.5] * len(texts)
 
-        print(f"DEBUG [predict]: Predicting sentiment for {len(texts)} texts (batch size: {batch_size})...", file=sys.stderr)
+        # 这行可以保留，也可以因为有了tqdm而移除
+        # print(f"DEBUG [predict]: Predicting sentiment for {len(texts)} texts (batch size: {batch_size})...", file=sys.stderr)
+        
         predictions = []
         self.model.eval() # Ensure model is in eval mode
-        with torch.no_grad():
-            for i in range(0, len(texts), batch_size):
-                batch = texts[i:i+batch_size]
-                # Handle potential empty strings within a batch if not filtered earlier
-                valid_batch = [t for t in batch if t] # Filter out empty strings for tokenization
-                if not valid_batch:
-                    # If the entire batch was empty strings, append default scores
-                    predictions.extend([0.5] * len(batch))
-                    continue
+        
+        # 使用 tqdm 包装迭代过程
+        # total=len(texts) 设置进度条的总长度
+        # desc="Analysing Sentiments" 是进度条的描述
+        # unit="text" 是处理单元的名称
+        with tqdm(total=len(texts), desc="Analysing Sentiments", unit="text", file=sys.stderr, ascii=True) as pbar:
+            with torch.no_grad():
+                for i in range(0, len(texts), batch_size):
+                    batch = texts[i:i+batch_size]
+                    valid_batch = [t for t in batch if t] 
+                    
+                    if not valid_batch:
+                        predictions.extend([0.5] * len(batch))
+                        pbar.update(len(batch)) # 即使是空批次也要更新进度
+                        continue
 
-                try:
-                    tokens = self.tokenizer(
-                        valid_batch, # Tokenize only non-empty texts
-                        padding=True,
-                        truncation=True,
-                        max_length=512, # Consider if this length is appropriate
-                        return_tensors="pt"
-                    ).to(_DEVICE)
+                    try:
+                        tokens = self.tokenizer(
+                            valid_batch,
+                            padding=True,
+                            truncation=True,
+                            max_length=512,
+                            return_tensors="pt"
+                        ).to(_DEVICE)
 
-                    # Use autocast for potential performance improvement on CUDA
-                    if _DEVICE == "cuda":
-                        with torch.cuda.amp.autocast():
+                        if _DEVICE == "cuda":
+                            with torch.cuda.amp.autocast():
+                                outputs = self.bert(**tokens)
+                                cls_embeddings = outputs.last_hidden_state[:, 0]
+                                preds = self.model(cls_embeddings)
+                        else: 
                             outputs = self.bert(**tokens)
-                            cls_embeddings = outputs.last_hidden_state[:, 0] # [CLS] token embedding
+                            cls_embeddings = outputs.last_hidden_state[:, 0]
                             preds = self.model(cls_embeddings)
-                    else: # Run without autocast on CPU
-                         outputs = self.bert(**tokens)
-                         cls_embeddings = outputs.last_hidden_state[:, 0]
-                         preds = self.model(cls_embeddings)
 
-                    # Map predictions back to the original batch size (including empty strings)
-                    pred_iter = iter(preds.cpu().flatten().tolist())
-                    batch_preds = [next(pred_iter) if t else 0.5 for t in batch] # Assign 0.5 to empty strings
-                    predictions.extend(batch_preds)
+                        pred_iter = iter(preds.cpu().flatten().tolist())
+                        batch_preds = [next(pred_iter) if t else 0.5 for t in batch]
+                        predictions.extend(batch_preds)
 
-                except Exception as e:
-                     print(f"ERROR [predict]: Error during batch prediction ({i}-{i+batch_size}) - {str(e)}", file=sys.stderr)
-                     print(traceback.format_exc(), file=sys.stderr) # Add traceback
-                     # Add default predictions for the failed batch to avoid length mismatch
-                     predictions.extend([0.5] * len(batch)) # Or handle error differently
+                    except Exception as e:
+                        print(f"ERROR [predict]: Error during batch prediction ({i}-{i+len(batch)-1}) - {str(e)}", file=sys.stderr)
+                        print(traceback.format_exc(), file=sys.stderr)
+                        predictions.extend([0.5] * len(batch)) # 失败的批次也使用默认预测
 
-        print(f"DEBUG [predict]: Prediction complete. Got {len(predictions)} scores.", file=sys.stderr)
+                    pbar.update(len(batch)) # 更新进度条，增加处理的文本数量
+
+        # 这行可以保留，也可以因为有了tqdm而移除
+        # print(f"DEBUG [predict]: Prediction complete. Got {len(predictions)} scores.", file=sys.stderr)
         return predictions
 
 # --- MODIFIED analysis_sentiment Function (Main public interface) ---
-def analysis_sentiment(input_data: pd.DataFrame, output_csv_path: str = None): # Add output_csv_path argument
+def analysis_sentiment(input_data: pd.DataFrame, output_csv_path: str = 'sentiment_analysis_result.csv'): # Add output_csv_path argument
     """
     Performs sentiment analysis on the input DataFrame.
     Expects 'content_all' or 'content' column for text and 'search_for' for grouping.

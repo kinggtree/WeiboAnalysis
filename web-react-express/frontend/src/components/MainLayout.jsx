@@ -42,12 +42,6 @@ const MainLayout = () => {
                   key: 'list-search',
                   icon: <SearchOutlined />,
                   label: <Link to="/list-search">列表搜索</Link>,
-                },
-                {
-                  key: 'detail-search',
-                  icon: <SearchOutlined />,
-                  label: <Link to="/detail-search">详细搜索</Link>,
-                  disabled: true // 预留功能
                 }
               ]
             },
