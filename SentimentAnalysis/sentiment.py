@@ -1,14 +1,14 @@
 import torch
 import json
-import pandas as pd # Make sure pandas is imported
+import pandas as pd
 from transformers import BertTokenizer, BertModel
 from torch import nn
 import warnings
 import os
-import sys # Import sys for printing debug/warning messages
-import numpy as np # Import numpy for aggregation if needed
-import traceback # Import traceback for error handling
-from tqdm.auto import tqdm # tqdm.auto 会自动选择适合环境的进度条样式
+import sys
+import numpy as np
+import traceback
+from tqdm.auto import tqdm
 
 
 warnings.filterwarnings('ignore')
@@ -18,7 +18,7 @@ _MODEL_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "model")
 _BERT_MODEL_PATH = os.path.join(_MODEL_DIR, "chinese_wwm_pytorch")
 _DNN_MODEL_PATH = os.path.join(_MODEL_DIR, "bert_dnn_10_weight_only.model")
 _DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
-print(f"DEBUG [sentiment.py]: Using device: {_DEVICE}", file=sys.stderr) # Add device info log
+print(f"DEBUG [sentiment.py]: Using device: {_DEVICE}", file=sys.stderr)
 
 # --- _Net Class ---
 class _Net(nn.Module):
@@ -36,47 +36,31 @@ def _parse_data(df_input: pd.DataFrame) -> pd.DataFrame:
     Parses the input DataFrame to extract the text content for analysis.
     Expects the content to be in the 'content_all' column.
     """
-    # Work on a copy to avoid SettingWithCopyWarning and modifying the original df
     df = df_input.copy()
     print(f"DEBUG [_parse_data]: Received DataFrame shape: {df.shape}", file=sys.stderr)
     print(f"DEBUG [_parse_data]: Received columns: {df.columns.tolist()}", file=sys.stderr)
 
-    # Remove the old logic relying on 'json_data'
-    # def parse_json(x): ... # No longer needed here
-    # df['parsed_json'] = df['json_data'].apply(parse_json) # Remove
-
-    # --- NEW LOGIC ---
-    # Check if the 'content_all' column exists (it should, based on analysisBridge.py)
     if 'content_all' in df.columns:
         print("DEBUG [_parse_data]: Found 'content_all' column. Using it for 'content'.", file=sys.stderr)
-        # Assign content from 'content_all', fill NaNs with empty string, ensure string type
         df['content'] = df['content_all'].fillna('').astype(str)
-    # --- Fallback/Alternative: Check for 'content' column directly ---
-    # Sometimes the column might already be named 'content' if preprocessing happened differently
     elif 'content' in df.columns:
         print("DEBUG [_parse_data]: Found 'content' column directly. Using it.", file=sys.stderr)
-        # Ensure it's clean (fillna, astype)
         df['content'] = df['content'].fillna('').astype(str)
     else:
-        # If neither 'content_all' nor 'content' is found, create an empty 'content' column and warn
         print("WARN [_parse_data]: Neither 'content_all' nor 'content' column found in input DataFrame. Sentiment analysis will likely yield default results.", file=sys.stderr)
-        df['content'] = '' # Create empty column to prevent downstream errors
+        df['content'] = ''
 
-    # Optional: Check if 'search_for' exists for grouping later
     if 'search_for' not in df.columns:
         print("WARN [_parse_data]: 'search_for' column not found. Aggregation might not work as expected.", file=sys.stderr)
-        # You might want to add a default 'search_for' value if needed for aggregation
-        # df['search_for'] = 'default_keyword'
 
     print(f"DEBUG [_parse_data]: DataFrame columns after parsing: {df.columns.tolist()}", file=sys.stderr)
     return df
 
 # --- _SentimentAnalyzer Class ---
 class _SentimentAnalyzer:
-    _instance = None # Singleton pattern to load models only once per process
+    _instance = None
 
     def __new__(cls, *args, **kwargs):
-        # ... (您的 __new__ 方法代码保持不变) ...
         if not cls._instance:
             print("DEBUG [_SentimentAnalyzer]: Initializing models...", file=sys.stderr)
             cls._instance = super(_SentimentAnalyzer, cls).__new__(cls)
@@ -101,20 +85,13 @@ class _SentimentAnalyzer:
         if not texts:
             print("DEBUG [predict]: Received empty list of texts. Returning empty list.", file=sys.stderr)
             return []
-        if all(not t for t in texts): # Check if all texts are empty strings
+        if all(not t for t in texts):
             print("DEBUG [predict]: All texts are empty. Returning default predictions.", file=sys.stderr)
             return [0.5] * len(texts)
-
-        # 这行可以保留，也可以因为有了tqdm而移除
-        # print(f"DEBUG [predict]: Predicting sentiment for {len(texts)} texts (batch size: {batch_size})...", file=sys.stderr)
         
         predictions = []
-        self.model.eval() # Ensure model is in eval mode
+        self.model.eval()
         
-        # 使用 tqdm 包装迭代过程
-        # total=len(texts) 设置进度条的总长度
-        # desc="Analysing Sentiments" 是进度条的描述
-        # unit="text" 是处理单元的名称
         with tqdm(total=len(texts), desc="Analysing Sentiments", unit="text", file=sys.stderr, ascii=True) as pbar:
             with torch.no_grad():
                 for i in range(0, len(texts), batch_size):
@@ -123,7 +100,7 @@ class _SentimentAnalyzer:
                     
                     if not valid_batch:
                         predictions.extend([0.5] * len(batch))
-                        pbar.update(len(batch)) # 即使是空批次也要更新进度
+                        pbar.update(len(batch))
                         continue
 
                     try:
@@ -156,12 +133,9 @@ class _SentimentAnalyzer:
 
                     pbar.update(len(batch)) # 更新进度条，增加处理的文本数量
 
-        # 这行可以保留，也可以因为有了tqdm而移除
-        # print(f"DEBUG [predict]: Prediction complete. Got {len(predictions)} scores.", file=sys.stderr)
         return predictions
 
-# --- MODIFIED analysis_sentiment Function (Main public interface) ---
-def analysis_sentiment(input_data: pd.DataFrame, output_csv_path: str = 'sentiment_analysis_result.csv'): # Add output_csv_path argument
+def analysis_sentiment(input_data: pd.DataFrame, output_csv_path: str = 'sentiment_analysis_result.csv'):
     """
     Performs sentiment analysis on the input DataFrame.
     Expects 'content_all' or 'content' column for text and 'search_for' for grouping.
@@ -169,25 +143,21 @@ def analysis_sentiment(input_data: pd.DataFrame, output_csv_path: str = 'sentime
     """
     if not isinstance(input_data, pd.DataFrame):
         print("ERROR [analysis_sentiment]: Input data is not a Pandas DataFrame.", file=sys.stderr)
-        return pd.DataFrame() # Return empty DataFrame
+        return pd.DataFrame()
 
     if input_data.empty:
         print("WARN [analysis_sentiment]: Received empty DataFrame. Returning empty result.", file=sys.stderr)
         return pd.DataFrame(columns=['search_for', 'count', 'mean', 'positive_ratio'])
 
     try:
-        # Initialize the analyzer (loads models only once)
         analyzer = _SentimentAnalyzer()
-        if analyzer is None: # Check if initialization failed
+        if analyzer is None:
              raise RuntimeError("SentimentAnalyzer instance is None, models likely failed to load.")
 
-        # Parse data to get the 'content' column
-        df = _parse_data(input_data) # df is now the modified copy
+        df = _parse_data(input_data)
 
-        # Get texts for prediction
         texts = df['content'].tolist()
 
-        # Predict sentiment
         if not texts or all(not t for t in texts):
              print("WARN [analysis_sentiment]: No valid text content found after parsing. Cannot perform prediction.", file=sys.stderr)
              if 'search_for' in df.columns:
@@ -202,15 +172,11 @@ def analysis_sentiment(input_data: pd.DataFrame, output_csv_path: str = 'sentime
              else:
                  return pd.DataFrame(columns=['search_for', 'count', 'mean', 'positive_ratio'])
 
-        df['sentiment_score'] = analyzer.predict(texts) # Rename to sentiment_score for clarity
+        df['sentiment_score'] = analyzer.predict(texts)
         print(f"DEBUG [analysis_sentiment]: Added 'sentiment_score' column. Shape: {df.shape}", file=sys.stderr)
 
-        # --- BEGIN: SAVE INDIVIDUAL RESULTS TO CSV ---
         if output_csv_path:
             try:
-                # Create a DataFrame with the required columns: "分析的语句", "分析结果（情感倾向，数字表示）"
-                # 'content' column has the original sentences
-                # 'sentiment_score' column has the numerical sentiment score
                 results_to_save = df[['content', 'sentiment_score']].copy()
                 results_to_save.rename(columns={
                     'content': '分析的语句',
@@ -223,9 +189,7 @@ def analysis_sentiment(input_data: pd.DataFrame, output_csv_path: str = 'sentime
             except Exception as e_csv:
                 print(f"ERROR [analysis_sentiment]: Failed to save individual results to CSV - {str(e_csv)}", file=sys.stderr)
                 print(traceback.format_exc(), file=sys.stderr)
-        # --- END: SAVE INDIVIDUAL RESULTS TO CSV ---
 
-        # Aggregate results (original logic)
         if 'search_for' in df.columns:
             print("DEBUG [analysis_sentiment]: Grouping results by 'search_for'...", file=sys.stderr)
             results = df.groupby('search_for').agg(
@@ -261,19 +225,17 @@ def analysis_sentiment(input_data: pd.DataFrame, output_csv_path: str = 'sentime
         print(traceback.format_exc(), file=sys.stderr)
         return pd.DataFrame(columns=['search_for', 'count', 'mean', 'positive_ratio'])
 
-# Example Usage (for testing purposes, won't run when called from analysisBridge.py)
 if __name__ == "__main__":
     print("Testing sentiment.py functions...")
-    # Create a dummy DataFrame similar to what might come from the CSV
     data = {
         'search_for': ['topic1', 'topic2', 'topic1', 'topic3', 'topic2', 'topic1'],
         'content_all': [
             '这是一个非常好的产品',
             '我不喜欢这个东西',
             '真的很棒，推荐购买',
-            '', # Empty string
+            '', 
             '体验太差了',
-            None # Missing value
+            None
         ],
         'other_col': [1, 2, 3, 4, 5, 6]
     }
