@@ -17,7 +17,6 @@ sys.stdin = io.TextIOWrapper(sys.stdin.buffer, encoding='utf-8')
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
 sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8', errors='replace')
 
-# --- get_collections 函数 ---
 def get_collections():
     try:
         if not hasattr(db, 'sync_db') or db.sync_db is None:
@@ -28,7 +27,6 @@ def get_collections():
         print(traceback.format_exc(), file=sys.stderr) # 打印完整 traceback
         sys.exit(1)
 
-# --- 修改 execute_query 函数 ---
 def execute_query(params):
     try:
         collection = params.get('collection') # 使用 get 获取，避免 KeyError
@@ -48,7 +46,7 @@ def execute_query(params):
             print("DEBUG: DataFrame is empty, returning empty list.", file=sys.stderr)
             return []
 
-        # --- 展开 'json_data' ---
+        # 展开 json_data
         if 'json_data' in df.columns:
             print("DEBUG: Processing 'json_data' column.", file=sys.stderr)
             try:
@@ -60,7 +58,6 @@ def execute_query(params):
                      df = df.drop('json_data', axis=1) # 如果全是空的，直接删除列
                 else:
                     original_index = df.index # 保存原始索引
-                    # 使用 pd.json_normalize
                     json_df = pd.json_normalize(valid_json_data)
                     json_df.index = original_index # 恢复索引以匹配原始df
 
@@ -73,7 +70,6 @@ def execute_query(params):
                         common_columns = df.columns.intersection(json_df.columns).tolist()
                         if common_columns:
                              print(f"WARN: Common columns found between base df and json_df: {common_columns}. Json_df columns will be preferred.", file=sys.stderr)
-                             # 可以选择保留哪个，这里默认 json_df 的会覆盖（如果 concat 不处理的话）
                              # 或者重命名 df 中的冲突列
                         df = pd.concat([df.drop('json_data', axis=1), json_df], axis=1)
                         print(f"DEBUG: DataFrame shape after merging json_data: {df.shape}", file=sys.stderr)
@@ -89,9 +85,9 @@ def execute_query(params):
                      df = df.drop('json_data', axis=1) # 尝试删除列后继续
 
 
-        # analysisBridge.py (在 execute_query 函数内部)
+        # analysisBridge.py
 
-        # --- 类型转换函数 ---
+        # 类型转换函数
         def convert_types_elementwise(value):
             # 1. 优先处理可能引发 pd.isna() 问题的特定类型
             if isinstance(value, ObjectId):
@@ -130,21 +126,16 @@ def execute_query(params):
             return value
 
         print("DEBUG: Applying type conversion using applymap...", file=sys.stderr)
-        # --- 使用 applymap () ---
         df = df.applymap(convert_types_elementwise)
         print("DEBUG: Type conversion applied.", file=sys.stderr)
 
         print("DEBUG: Applying type conversion using applymap...", file=sys.stderr)
-        # --- 使用 applymap ---
-        # applymap 保证逐元素应用，因此 convert_types_elementwise 接收的应是标量
         df = df.applymap(convert_types_elementwise)
         print("DEBUG: Type conversion applied.", file=sys.stderr)
 
-        # 再次检查并替换 NaN/NaT (以防万一)
         df = df.replace({np.nan: None, pd.NaT: None})
         print("DEBUG: Final NaN/NaT replacement done.", file=sys.stderr)
 
-        # 转换为字典列表
         dict_records = df.to_dict(orient='records')
         print(f"DEBUG: Converted to {len(dict_records)} records.", file=sys.stderr)
         return dict_records
@@ -155,7 +146,6 @@ def execute_query(params):
         print(traceback.format_exc(), file=sys.stderr)
         sys.exit(1) # 确保异常时退出并返回错误码
 
-# --- analyze_sentiment_from_csv 函数 ---
 def analyze_sentiment_from_csv(params):
     try:
         csv_filepath = params.get('csv_filepath')
@@ -194,7 +184,6 @@ def analyze_sentiment_from_csv(params):
         print(traceback.format_exc(), file=sys.stderr) # 打印完整 traceback
         sys.exit(1)
 
-# --- __main__ 部分 ---
 if __name__ == "__main__":
     if len(sys.argv) < 2:
         print("ERROR: Missing action argument.", file=sys.stderr)
@@ -239,7 +228,6 @@ if __name__ == "__main__":
                  print(json_output) # 打印最终JSON结果到stdout
             except TypeError as dump_err:
                  print(f"ERROR [{action}]: Failed to serialize result to JSON - {dump_err}", file=sys.stderr)
-                 # 可以尝试打印部分 result 帮助调试
                  print(f"DEBUG: Result snippet before serialization error: {str(result)[:500]}", file=sys.stderr)
                  sys.exit(1)
 

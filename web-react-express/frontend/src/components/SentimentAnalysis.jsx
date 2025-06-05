@@ -10,11 +10,11 @@ const SentimentAnalysis = () => {
   const [selectedCollection, setSelectedCollection] = useState('');
   const [limit, setLimit] = useState(1000);
   const [queryResult, setQueryResult] = useState(null); // 存储用于显示的查询结果
-  const [csvFilename, setCsvFilename] = useState(null); // **新增：存储CSV文件名**
+  const [csvFilename, setCsvFilename] = useState(null);
   const [analysisResult, setAnalysisResult] = useState(null);
-  const [loading, setLoading] = useState(false); // Note: This state variable is declared but not directly used for Spin components. Consider removing if not needed elsewhere.
-  const [queryLoading, setQueryLoading] = useState(false); // 查询按钮的loading
-  const [analysisLoading, setAnalysisLoading] = useState(false); // 分析按钮的loading
+  const [loading, setLoading] = useState(false);
+  const [queryLoading, setQueryLoading] = useState(false);
+  const [analysisLoading, setAnalysisLoading] = useState(false);
   const [collectionsLoading, setCollectionsLoading] = useState(true);
 
   // 获取集合列表
@@ -37,10 +37,8 @@ const SentimentAnalysis = () => {
             message.error(`获取集合列表失败: ${errorDetails}`);
           }
         } else if (err.request) {
-          // The request was made but no response was received
           message.error('获取集合列表失败: 网络连接错误，请检查服务器状态或您的网络连接。');
         } else {
-          // Something happened in setting up the request that triggered an Error
           message.error(`获取集合列表失败: 请求发生错误 - ${err.message}`);
         }
         setCollections([]);
@@ -161,7 +159,6 @@ const SentimentAnalysis = () => {
     }
   };
 
-  // 表格列配置 (保持不变)
   const queryColumns = [
     { title: 'ID', dataIndex: '_id', key: '_id', width: 150, ellipsis: true },
     { title: '搜索关键词', dataIndex: 'search_for', key: 'search_for', width: 150, ellipsis: true },

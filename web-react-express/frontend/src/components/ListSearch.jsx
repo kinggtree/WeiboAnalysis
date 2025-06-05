@@ -39,8 +39,6 @@ const ListSearch = () => {
             }).catch(() => {
                 message.error(`${actionDescription}失败，状态码: ${status} (无法读取响应体)`);
             });
-            // 注意：由于异步解析，isServerError 可能不会立即在 message.error 之前设置
-            // 但对于 500/404 已经同步处理了
         }
     } else if (error instanceof TypeError && error.message.toLowerCase().includes('failed to fetch')) {
         userMessage = '网络连接错误，请检查您的网络或服务器状态。';
@@ -57,7 +55,6 @@ const ListSearch = () => {
             message.error(userMessage);
         }
     } else if (!(error instanceof Response && error.status !== 500 && error.status !== 404)) {
-        // 如果不是服务器错误，并且不是正在异步处理的 Response 错误，也显示消息
         message.error(userMessage);
     }
 
@@ -89,8 +86,6 @@ const ListSearch = () => {
       if (!response.ok) {
         handleApiError(response, '请求分页数据'); // 使用统一错误处理
         resetSearchState(true); // 保留 searchId，因为可能是临时分页错误
-        // 如果分页错误非常严重，可以考虑 setSearchId(null)
-        // if (response.status === 500 || response.status === 404) setSearchId(null);
         return;
       }
 
@@ -110,7 +105,6 @@ const ListSearch = () => {
     } catch (error) {
       handleApiError(error, '处理分页数据');
       resetSearchState(true); // 保留 searchId
-      // if (error instanceof TypeError && error.message.toLowerCase().includes('failed to fetch')) setSearchId(null);
     } finally {
       setLoading(false);
     }
@@ -165,8 +159,6 @@ const ListSearch = () => {
   const handleTableChange = (newPagination, filters, sorter) => {
     if (serverErrorOccurred) {
         message.warning('服务器当前不可用，无法切换分页。');
-        // 可以选择是否回退分页状态
-        // setPagination(prev => ({ ...prev, current: pagination.current, pageSize: pagination.pageSize }));
         return;
     }
     if (searchId) {
@@ -272,8 +264,8 @@ const ListSearch = () => {
           <Button
             type="primary"
             htmlType="submit"
-            loading={loading && !searchId} // Original loading condition
-            disabled={loading || serverErrorOccurred} // Add serverErrorOccurred
+            loading={loading && !searchId}
+            disabled={loading || serverErrorOccurred}
           >
             {serverErrorOccurred ? '服务不可用' : '搜索'}
           </Button>
@@ -295,7 +287,6 @@ const ListSearch = () => {
           pagination={pagination}
           onChange={handleTableChange}
           scroll={{ x: 'max-content' }}
-          // Disable pagination interaction if server error
           components={serverErrorOccurred ? {
             pagination: () => <div style={{textAlign: 'center', padding: '16px', color: 'grey'}}>分页功能暂不可用</div>
           } : undefined}

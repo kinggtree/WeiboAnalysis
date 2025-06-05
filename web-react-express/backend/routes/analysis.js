@@ -1,15 +1,14 @@
 const express = require('express');
 const { spawn } = require('child_process');
 const path = require('path');
-const fs = require('fs'); // 引入 fs 模块
-const { Parser } = require('json2csv'); // 引入 json2csv 库
+const fs = require('fs');
+const { Parser } = require('json2csv');
 const logger = require('../utils/logger');
 const iconv = require('iconv-lite');
-const os = require('os'); // 引入 os 模块获取临时目录
+const os = require('os');
 
 const router = express.Router();
 
-// --- 新增：确保临时数据目录存在 ---
 const dataCacheDir = path.join(__dirname, '..', 'data_cache'); // 定义缓存目录路径
 if (!fs.existsSync(dataCacheDir)) {
   try {
@@ -20,7 +19,6 @@ if (!fs.existsSync(dataCacheDir)) {
     // 根据需要决定是否退出程序或进行其他错误处理
   }
 }
-// --- 结束新增 ---
 
 // 获取所有集合名称
 router.get('/collections', async (req, res) => {
@@ -51,7 +49,7 @@ router.get('/collections', async (req, res) => {
   });
 
   pythonProcess.on('close', async (code) => {
-    if (code !== 0 || errOutput.toLowerCase().includes('error')) { // 更健壮的错误检查
+    if (code !== 0 || errOutput.toLowerCase().includes('error')) {
       const logMessage = `Exit code: ${code}\nStderr: ${errOutput}\nStdout: ${result}`;
       const logPath = await logger.createErrorLog(logMessage);
       console.error('获取集合列表失败:', logMessage);
@@ -141,7 +139,6 @@ router.post('/query', async (req, res) => {
       const queryData = JSON.parse(result);
       console.log(`查询成功，获取到 ${queryData.length} 条数据`);
 
-      // --- 新增：将数据保存到 CSV ---
       if (queryData && queryData.length > 0) {
         const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
         // 清理集合名称，移除可能导致问题的字符
@@ -170,7 +167,6 @@ router.post('/query', async (req, res) => {
          console.log('查询结果为空，不生成CSV文件');
         res.json({ queryData: [], csvFilename: null });
       }
-      // --- 结束新增 ---
 
     } catch (e) {
       const logMessage = `Error parsing JSON: ${e}\nStderr: ${errOutput}\nStdout: ${result}`;
@@ -198,17 +194,15 @@ router.post('/query', async (req, res) => {
 
 // 执行情感分析（通过CSV文件）
 router.post('/sentiment', async (req, res) => {
-  const { csvFilename } = req.body; // **修改：接收 csvFilename**
+  const { csvFilename } = req.body;
   console.log(`执行情感分析，使用文件: ${csvFilename}`);
 
   if (!csvFilename) {
     return res.status(400).json({ error: '缺少 csvFilename 参数' });
   }
 
-  // **修改：构建完整的文件路径**
   const csvFilePath = path.join(dataCacheDir, csvFilename);
 
-  // **新增：检查文件是否存在**
   if (!fs.existsSync(csvFilePath)) {
       console.error(`错误：CSV文件未找到 - ${csvFilePath}`);
       return res.status(404).json({ error: `指定的CSV文件未找到: ${csvFilename}` });
@@ -223,14 +217,13 @@ router.post('/sentiment', async (req, res) => {
 
   const pythonProcess = spawn(pythonExec, [
     pythonScript,
-    'analyze_sentiment_from_csv' // **修改：调用新的Python命令**
+    'analyze_sentiment_from_csv'
   ], {
     env: { ...process.env, PYTHONIOENCODING: 'utf-8', PYTHONUTF8: '1' },
     encoding: 'utf-8',
     shell: process.platform === 'win32'
   });
 
-  // **修改：将包含文件路径的JSON写入标准输入**
   pythonProcess.stdin.write(JSON.stringify({ csv_filepath: csvFilePath }));
   pythonProcess.stdin.end();
 
@@ -245,17 +238,6 @@ router.post('/sentiment', async (req, res) => {
   });
 
   pythonProcess.on('close', async (code) => {
-    // **新增：分析完成后可以选择删除临时文件**
-    // if (fs.existsSync(csvFilePath)) {
-    //   try {
-    //     fs.unlinkSync(csvFilePath);
-    //     console.log(`已删除临时文件: ${csvFilePath}`);
-    //   } catch (unlinkErr) {
-    //     console.error(`删除临时文件失败: ${unlinkErr}`);
-    //   }
-    // }
-    // **注意：** 如果希望用户能多次分析同一查询结果而不重新查询，则不要删除文件。
-    //          需要一个更完善的清理策略（例如定时任务清理旧文件）。
 
     if (code !== 0 || errOutput.toLowerCase().includes('error')) {
       const logMessage = `Exit code: ${code}\nStderr: ${errOutput}\nStdout: ${result}`;

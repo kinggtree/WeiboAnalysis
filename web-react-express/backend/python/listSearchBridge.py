@@ -3,12 +3,11 @@ import sys
 import os
 import json
 import re
-from pypinyin import slug, Style  # 需要安装 pypinyin 库
+from pypinyin import slug, Style
 import io
 from datetime import date
 import traceback
 import pandas as pd
-
 
 
 # 强制标准流编码
@@ -29,14 +28,14 @@ def generate_safe_collection_name(search_text: str) -> str:
     
     # 第二步：如果原始清理结果为空（说明是纯中文或无效字符）
     if not cleaned:
-        # 将中文转换为拼音（示例："测试" → "ce_shi"）
+        # 将中文转换为拼音
         pinyin_str = slug(
             search_text,
             style=Style.NORMAL,
-            separator='_'       # 明确指定分隔符
-        ).lower()                # 统一转换为小写
+            separator='_'   # 明确指定分隔符
+        ).lower()   # 统一转换为小写
         
-        # 对拼音结果再次清理（确保没有漏网之鱼）
+        # 对拼音结果再次清理
         cleaned = re.sub(r'[^a-z0-9_]', '', pinyin_str)
         
         # 兜底处理：如果仍然为空，使用默认值
@@ -69,7 +68,6 @@ def handle_errors(func):
             print(f"ERROR Message: {err_msg}", file=sys.stderr)
             print(f"Traceback:\n{err_traceback}", file=sys.stderr) # 打印完整 traceback
             print(f"--- End Python Script Error ---", file=sys.stderr)
-            # --- 结束详细信息打印 ---
             sys.exit(1) # 以非零状态码退出，表示出错
     return wrapper
 
@@ -126,22 +124,12 @@ def main_process():
 
     df_results = process_list_documents(documents)
 
-    # --- 将 DataFrame 转换为 JSON 友好的格式 ---
     # 检查 df_results 是否真的是 DataFrame
     if isinstance(df_results, pd.DataFrame):
-        # 使用 .to_dict(orient='records') 转换为列表的字典
-        # [{column1: valueA1, column2: valueB1}, {column1: valueA2, column2: valueB2}, ...]
         serializable_data = df_results.to_dict(orient='records')
-        # 注意：如果 DataFrame 中包含 NaT (Not a Time) 或 NaN (Not a Number)，
-        # to_dict 可能会将其转换为 None，这在 JSON 中是合法的 (null)。
-        # 如果包含 Python 的 datetime 对象，它们通常会被转换为 ISO 格式的字符串或时间戳，
-        # 这取决于 Pandas 版本和你的数据，但通常也是 JSON 友好的。
     else:
-        # 如果 process_list_documents 返回的不是 DataFrame，
-        # 假设它已经是 JSON 友好的格式了
         serializable_data = df_results
     
-    # print(json.dumps(processed_data, ensure_ascii=False)) # ensure_ascii=False 保证中文正确输出
     print(json.dumps(serializable_data, ensure_ascii=False)) # 打印转换后的列表/字典
 
 

@@ -23,10 +23,8 @@ def serialize_client(client) -> str:
     session_state = {
         'cookies': dict(client.cookies),
         'headers': dict(client.headers),
-        # 仅保留实际存在的属性
     }
     
-    # 可选：动态检查其他属性是否存在
     for attr in ['proxies', 'auth', 'cert', 'verify']:
         if hasattr(client, attr):
             session_state[attr] = getattr(client, attr)
@@ -66,7 +64,7 @@ def generate_qr():
         img_byte_arr.close()
         
         # 确保Base64编码正确
-        base64_image = base64.b64encode(img_data).decode('ascii')  # 注意这里使用ascii
+        base64_image = base64.b64encode(img_data).decode('ascii')  # 这里使用ascii
         
         # 修改 generate_qr() 的返回结构，去掉多余的data层级
         return {

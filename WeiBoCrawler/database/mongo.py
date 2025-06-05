@@ -19,11 +19,11 @@ class MongoDBManager:
 
     # 同步操作
     def get_sync_collection(self, collection_name: str):
-        """同步获取集合"""
+        # 同步获取集合
         return self.sync_db[collection_name]
 
     def sync_get_collection_names(self) -> list[str]:
-        """同步获取所有集合名称（过滤系统集合）"""
+        # 同步获取所有集合名称（过滤系统集合）
         names = self.sync_db.list_collection_names()
         return [name for name in names if not name.startswith("system.")]
 
@@ -49,12 +49,12 @@ class MongoDBManager:
 
     # 异步操作
     def get_async_collection(self, collection_name: str):
-        """异步获取集合"""
+        # 异步获取集合
         return self.async_db[collection_name]
     
 
     async def async_get_collection_names(self) -> list[str]:
-        """异步获取所有集合名称（过滤系统集合）"""
+        # 异步获取所有集合名称（过滤系统集合）
         names = await self.async_db.list_collection_names()
         return [name for name in names if not name.startswith("system.")]
     
@@ -80,7 +80,7 @@ class MongoDBManager:
 
     # 关联关系操作示例
     async def async_link_comments(self, body_id: PyObjectId, comment_ids: list[PyObjectId], comment_type: str):
-        """关联评论到主记录"""
+        # 关联评论到主记录
         update_field = f"{comment_type}_ids"
         await self.async_body_collection.update_one(
             {"_id": body_id},
@@ -88,7 +88,7 @@ class MongoDBManager:
         )
 
     async def async_get_related_comments(self, body_id: PyObjectId, comment_type: str):
-        """获取关联评论"""
+        # 获取关联评论
         body = await self.async_body_collection.find_one({"_id": body_id})
         if not body:
             return []

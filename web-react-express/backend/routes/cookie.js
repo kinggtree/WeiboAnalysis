@@ -36,7 +36,7 @@ function runPythonProcess(action, params = {}) {
       stdout += data.toString('utf8');
     });
 
-    // 处理错误输出（Windows兼容）
+    // 处理错误输出（兼容Windows）
     pythonProcess.stderr.on('data', (data) => {
       const decoded = process.platform === 'win32' 
         ? iconv.decode(data, 'cp936')  // Windows使用GBK编码

@@ -13,14 +13,12 @@ from tqdm.auto import tqdm
 
 warnings.filterwarnings('ignore')
 
-# --- Model Path Configuration ---
 _MODEL_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "model")
 _BERT_MODEL_PATH = os.path.join(_MODEL_DIR, "chinese_wwm_pytorch")
 _DNN_MODEL_PATH = os.path.join(_MODEL_DIR, "bert_dnn_10_weight_only.model")
 _DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 print(f"DEBUG [sentiment.py]: Using device: {_DEVICE}", file=sys.stderr)
 
-# --- _Net Class ---
 class _Net(nn.Module):
     def __init__(self, input_size):
         super().__init__()
@@ -30,12 +28,7 @@ class _Net(nn.Module):
     def forward(self, x):
         return self.sigmoid(self.fc(x))
 
-# --- MODIFIED _parse_data Function ---
 def _parse_data(df_input: pd.DataFrame) -> pd.DataFrame:
-    """
-    Parses the input DataFrame to extract the text content for analysis.
-    Expects the content to be in the 'content_all' column.
-    """
     df = df_input.copy()
     print(f"DEBUG [_parse_data]: Received DataFrame shape: {df.shape}", file=sys.stderr)
     print(f"DEBUG [_parse_data]: Received columns: {df.columns.tolist()}", file=sys.stderr)
@@ -56,7 +49,6 @@ def _parse_data(df_input: pd.DataFrame) -> pd.DataFrame:
     print(f"DEBUG [_parse_data]: DataFrame columns after parsing: {df.columns.tolist()}", file=sys.stderr)
     return df
 
-# --- _SentimentAnalyzer Class ---
 class _SentimentAnalyzer:
     _instance = None
 
@@ -136,11 +128,6 @@ class _SentimentAnalyzer:
         return predictions
 
 def analysis_sentiment(input_data: pd.DataFrame, output_csv_path: str = 'sentiment_analysis_result.csv'):
-    """
-    Performs sentiment analysis on the input DataFrame.
-    Expects 'content_all' or 'content' column for text and 'search_for' for grouping.
-    Optionally saves individual sentence results to a CSV file.
-    """
     if not isinstance(input_data, pd.DataFrame):
         print("ERROR [analysis_sentiment]: Input data is not a Pandas DataFrame.", file=sys.stderr)
         return pd.DataFrame()

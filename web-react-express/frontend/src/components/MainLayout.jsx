@@ -14,7 +14,6 @@ const { Sider, Content } = Layout;
 const MainLayout = () => {
   return (
     <Layout style={{ minHeight: '100vh' }}>
-      {/* 侧边栏 */}
       <Sider
         theme="light"
         width={220}
@@ -75,7 +74,6 @@ const MainLayout = () => {
         />
       </Sider>
 
-      {/* 主内容区 */}
       <Content 
         style={{ 
           marginLeft: 220,
@@ -90,7 +88,7 @@ const MainLayout = () => {
           borderRadius: 8,
           boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
         }}>
-          <Outlet /> {/* 子路由出口 */}
+          <Outlet />
         </div>
       </Content>
     </Layout>

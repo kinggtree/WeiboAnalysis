@@ -5,14 +5,11 @@ const path = require('path');
 const logger = require('../utils/logger');
 const iconv = require('iconv-lite');
 const fs = require('fs');
-const { v4: uuidv4 } = require('uuid'); // Import UUID generator (install: npm install uuid)
+const { v4: uuidv4 } = require('uuid');
 
-// --- In-memory Cache ---
-// Structure: Map<searchId, { data: Array<any>, timestamp: number, total: number }>
 const searchCache = new Map();
-const CACHE_TTL_MS = 15 * 60 * 1000; // Cache results for 15 minutes
+const CACHE_TTL_MS = 15 * 60 * 1000;
 
-// --- Function to clean up expired cache entries ---
 function cleanupExpiredCache() {
     const now = Date.now();
     for (const [key, value] of searchCache.entries()) {
@@ -22,14 +19,11 @@ function cleanupExpiredCache() {
         }
     }
 }
-// Periodically clean up cache (e.g., every 5 minutes)
 setInterval(cleanupExpiredCache, 5 * 60 * 1000);
 
 
-// --- Initial Search Route ---
 router.post('/list-search', async (req, res) => {
-  // --- Default page size for the initial request ---
-  const initialPageSize = parseInt(req.query.pageSize || '25', 10); // Allow overriding default via query param if needed
+  const initialPageSize = parseInt(req.query.pageSize || '25', 10);
 
   try {
     // 参数预处理 (搜索参数)
@@ -43,15 +37,14 @@ router.post('/list-search', async (req, res) => {
 
     // 1. 执行 Python 进程获取 *所有* 结果
     console.log("Initiating Python script for new search...");
-    const fullResult = await runPythonSearchProcess(searchParams); // fullResult is the complete array
+    const fullResult = await runPythonSearchProcess(searchParams);
 
     // 2. 检查 fullResult 是否为数组
     if (!Array.isArray(fullResult)) {
         console.warn("Python script did not return an array.");
-        // Return empty result but still success status code
         return res.json({
             status: 'success',
-            searchId: null, // No ID if no results
+            searchId: null,
             data: [],
             pagination: { current: 1, pageSize: initialPageSize, total: 0 },
             update_time: new Date().toISOString()
@@ -76,12 +69,12 @@ router.post('/list-search', async (req, res) => {
     // 6. 成功响应 (发送第一页数据 + searchId)
     res.json({
       status: 'success',
-      searchId: searchId, // Send the ID to the client
-      data: firstPageData, // Only send the first page
+      searchId: searchId,
+      data: firstPageData,
       pagination: {
         current: 1,
         pageSize: initialPageSize,
-        total: totalItems // Send total count
+        total: totalItems
       },
       update_time: new Date().toISOString()
     });
@@ -100,7 +93,6 @@ router.post('/list-search', async (req, res) => {
   }
 });
 
-// --- New Route for Fetching Subsequent Pages ---
 router.get('/list-search/page', (req, res) => {
     const { searchId, page, pageSize } = req.query;
 
@@ -127,12 +119,12 @@ router.get('/list-search/page', (req, res) => {
     // 2. 检查缓存是否存在且未过期
     if (!cachedEntry || (Date.now() - cachedEntry.timestamp > CACHE_TTL_MS)) {
         if (cachedEntry) {
-            searchCache.delete(searchId); // Remove expired entry
+            searchCache.delete(searchId);
             console.log(`Cache expired for searchId: ${searchId}`);
         } else {
             console.log(`Cache miss for searchId: ${searchId}`);
         }
-        return res.status(404).json({ // 404 Not Found is appropriate here
+        return res.status(404).json({
             status: 'error',
             message: 'Search results not found or expired. Please perform the search again.'
         });
@@ -152,14 +144,12 @@ router.get('/list-search/page', (req, res) => {
             pageSize: sizeNum,
             total: totalItems
         },
-        update_time: new Date(cachedEntry.timestamp).toISOString() // Reflect cache time
+        update_time: new Date(cachedEntry.timestamp).toISOString()
     });
 });
 
 
-// runPythonSearchProcess 函数保持不变
 async function runPythonSearchProcess(params) {
-  // ... (内部逻辑不变，仍然返回解析后的完整 JSON 数据)
   return new Promise((resolve, reject) => {
     const pythonScript = path.resolve(__dirname, '../python/listSearchBridge.py');
     const pythonExec = process.env.PYTHON_EXECUTABLE || 'python';
@@ -232,7 +222,6 @@ async function runPythonSearchProcess(params) {
         const newlineIndex = stdout.indexOf('\n');
         if (newlineIndex !== -1) {
           jsonString = stdout.substring(newlineIndex + 1);
-          // console.log("Removed first line, attempting to parse the rest as JSON."); // Less verbose logging
         } else {
           console.warn("Stdout contains only one line. Attempting to parse it directly.");
         }
@@ -240,9 +229,9 @@ async function runPythonSearchProcess(params) {
         jsonString = jsonString.trim();
         if (!jsonString) {
           console.warn("After removing the first line (if any), the remaining output is empty.");
-          return resolve([]); // Resolve with empty array if no JSON
+          return resolve([]);
         }
-        resolve(JSON.parse(jsonString)); // Parse the full JSON array
+        resolve(JSON.parse(jsonString));
 
       } catch (e) {
         console.error("Failed to parse Python output as JSON.");

@@ -2,7 +2,7 @@
 from datetime import datetime
 from enum import Enum
 from typing import List, Optional, Annotated
-from pydantic import BaseModel, Field, ConfigDict, GetJsonSchemaHandler, BeforeValidator
+from pydantic import BaseModel, Field, ConfigDict, BeforeValidator
 from pydantic.json_schema import JsonSchemaValue
 from pydantic_core import CoreSchema
 from bson import ObjectId

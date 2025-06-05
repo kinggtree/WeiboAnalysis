@@ -10,10 +10,10 @@ const CookieAuth = () => {
   const [qrData, setQrData] = useState(null);
   const [checking, setChecking] = useState(false);
   const [cookies, setCookies] = useState(null);
-  const [loading, setLoading] = useState(false); // For generateQR button
+  const [loading, setLoading] = useState(false);
   const [initLoading, setInitLoading] = useState(true);
   const pollingRef = useRef(null);
-  const [serverErrorOccurred, setServerErrorOccurred] = useState(false); // 新增状态：标记服务器是否出错
+  const [serverErrorOccurred, setServerErrorOccurred] = useState(false);
 
   // 统一的错误处理函数，用于设置 serverErrorOccurred
   const handleApiError = (error, actionDescription = '操作') => {
@@ -33,7 +33,6 @@ const CookieAuth = () => {
       }
     } else if (error.request) {
       userMessage = `${actionDescription}失败: 网络连接错误，请检查服务器状态或您的网络连接。`;
-      // 考虑将网络连接错误也视为一种服务器错误，从而禁用按钮
       isServerError = true;
     } else {
       userMessage = `${actionDescription}失败: 请求发生错误 - ${error.message}`;
@@ -116,8 +115,6 @@ const CookieAuth = () => {
         setServerErrorOccurred(false); // 成功后清除错误标记
       } else {
         message.error(response.data.message || '生成二维码失败');
-        // 根据后端返回的错误类型，判断是否是服务器级错误
-        // 假设如果不是 success，且没有特定状态码，可能是业务逻辑错误，不一定是服务器宕机
       }
     } catch (error) {
       handleApiError(error, '生成二维码');
